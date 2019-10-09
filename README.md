@@ -1,4 +1,4 @@
-# UnexpectedPatternMining
+# Unexpected Pattern Mining
 Mining unexpected patterns from the data. The patterns are association rules which are generated using Apriori Algorithm. A clustering based framework is used to categorized these patterns into clusters, which are considered as beliefs, and outliers, which are potential candidates for unexpected patterns. The outliers then are compared to the beliefs to see if they're contrary or not contrary to the beliefs. If they are, they are considered as unexpected.
 
 ## Requirements:

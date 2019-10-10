@@ -49,6 +49,15 @@ class IOHelper:
         with open (file_name, 'w') as text_file:
             json.dump(o, text_file)
             
+    @staticmethod 
+    def save_as_json_format_in_line(file_name, o):
+        with open (file_name, 'w') as text_file:
+            #json.dump(o, text_file)
+            for item in o:
+                line = json.dumps(item)
+                text_file.write(line)
+                text_file.write('\n')
+            
     @staticmethod        
     def load_json_object(file_name):
         with open(file_name, 'r') as text_file:

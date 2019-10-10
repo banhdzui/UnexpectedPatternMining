@@ -7,7 +7,9 @@ import sys
 
 from common.CommandArgs import CommandArgs
 from common.DataSet import DataSet
+
 from rules_mining.RuleMiner import RuleMiner
+from common.ArgumentTuple import ARMParams
         
     
 if __name__ == '__main__':
@@ -29,12 +31,14 @@ if __name__ == '__main__':
     train_data_set.load(config.get_value('input'), class_index)
     
     print('Generating rules ....')
-    min_sup = float(config.get_value('minsup'))
-    min_conf = float(config.get_value('minconf'))
+    
+    minsup = float(config.get_value('minsup'))
+    minconf = float(config.get_value('minconf'))
     itemset_max_size = int(config.get_value('maxitems'))
+    arm_params = ARMParams(minsup, minconf, itemset_max_size)
     
     miner = RuleMiner(config.get_value('format'), train_data_set)
-    miner.generate_itemsets_and_rules(min_sup, min_conf, itemset_max_size)
+    miner.generate_itemsets_and_rules(arm_params)
     
     print('Finished!!!')
     

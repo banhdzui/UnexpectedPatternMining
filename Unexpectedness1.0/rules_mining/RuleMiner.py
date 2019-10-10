@@ -15,8 +15,8 @@ from objective_measures.Interestingness import ObjectiveMeasure as om
 from rules_mining.RulesCollection import RulesDictionary
 
 import json
-from scipy import sparse
 import numpy as np
+from common.ArgumentTuple import ARMFiles
 
 class RuleMiner(object):    
     '''
@@ -26,50 +26,34 @@ class RuleMiner(object):
 
     def __init__(self, filter_name, train_data_set):
         
-        self.temp_folder = 'tmp/'
-        
-        self.itemset_tmp_file = self.temp_folder + 'miner.tmp.itemsets'
-        self.rules_tmp_file = self.temp_folder + 'miner.tmp.rules'
-        self.best_rules_file = self.temp_folder + 'miner.best_tmp.rules'
-        
-        self.interestingness_tmp_file = self.temp_folder +'miner.tmp.interestingness'
-        self.probabilities_tmp_file = self.temp_folder +'miner.tmp.probabilities'
+        self.nthreads = 4
+        self.files_info = ARMFiles('tmp/')
         
         self.filter_name = filter_name
         self.data_set = train_data_set
         
-        self.nthreads = 4
-    
         self.relation_matrix = None 
-        
-        self.feature_tmp_file = self.temp_folder +'miner.tmp.features'
-        self.non_redundant_rule_tmp_file = self.temp_folder +'miner.tmp.non_redundant_rules'
-        self.non_redundant_rule_feature_tmp_file = self.temp_folder + 'miner.tmp.non_redundant_rules.features'
-        self.relation_tmp_file = self.temp_folder + 'relation_matrix.csv'
-        
         if self.data_set is not None:
             self.relation_matrix = self.data_set.items_relationship()
-            #print(self.relation_matrix.item_dict)
         
     '''
     Load generated frequent itemsets from file. 
     This method must be called after generate_frequent_itemsets is called
     '''
-    def load_frequent_itemsets_as_dictionary(self):
+    def load_frequent_itemsets_as_dict(self):
         freq_itemset_dict = ItemsetDictionary(0)
-        freq_itemset_dict.load_from_file(self.itemset_tmp_file)
+        freq_itemset_dict.load_from_file(self.files_info.itemset_tmp_file)
         return freq_itemset_dict
     
     '''
     Load generated association rules from file. 
     This method must be called after generate_association_rules is called
     '''
-    def load_rules_as_dictionary(self):
+    def load_rules_as_dict(self):
         rules_dict = RulesDictionary()
         
         for i in range(self.nthreads):
-            file_name = self.rules_tmp_file + '.' + str(i)
-            rules_dict.load_from_file(file_name)
+            rules_dict.load_from_file(self.files_info.get_rule_file(i))
                 
         return rules_dict
 
@@ -77,56 +61,56 @@ class RuleMiner(object):
     '''
     Generate frequent itemsets from data-set
     '''
-    def generate_frequent_itemsets(self, min_sup, itemset_max_size):
+    def generate_frequent_itemsets(self, arm_params):
         
         print ('generating frequent item-sets...')
         apriori = Apriori(self.data_set)
-        apriori.generate_frequent_itemsets_vw(min_sup * self.data_set.size(), 
+        apriori.generate_frequent_itemsets_vw(arm_params.min_sup * self.data_set.size(), 
                                               self.nthreads, 
-                                              itemset_max_size, 
-                                              self.itemset_tmp_file)
+                                              arm_params.itemset_max_size, 
+                                              self.files_info.itemset_tmp_file)
         
     '''
     Generate association rules from data-set. 
     This method must be called after generate_frequent_itemsets(...) is called
     '''
-    def generate_association_rules(self, min_conf):
-        freq_itemsets_dict = self.load_frequent_itemsets_as_dictionary()
+    def generate_association_rules(self, arm_params):
+        freq_itemsets_dict = self.load_frequent_itemsets_as_dict()
         
         print ('generating rules ....')
         itemset_formatter = getattr(ItemsetFormatter, self.filter_name)
         rule_formatter = getattr(RuleFormatter, self.filter_name)
         rule_generator = Generator(freq_itemsets_dict, 
-                                   min_conf, 
+                                   arm_params.min_conf, 
                                    itemset_formatter, 
                                    rule_formatter, 
                                    self.nthreads)
-        rule_generator.execute(self.rules_tmp_file)
+        rule_generator.execute(self.files_info.rules_tmp_file)
         
     '''
     Generate association rules and select K patterns with highest confidence.
     '''    
-    def generate_itemsets_and_rules(self, min_sup, min_conf, itemset_max_size = -1):
-        self.generate_frequent_itemsets(min_sup, itemset_max_size)
-        self.generate_association_rules(min_conf)
-        self.extract_feature_vectors_()
+    def generate_itemsets_and_rules(self, arm_params):
+        self.generate_frequent_itemsets(arm_params)
+        self.generate_association_rules(arm_params)
+        self.extract_features_4_all_rules()
          
     '''
     Compute confidence for all association rules generated from data-set
     '''
     def compute_confidence(self, association_rules_list):
-        freq_itemset_dict = self.load_frequent_itemsets_as_dictionary()
+        freq_itemset_dict = self.load_frequent_itemsets_as_dict()
         
         rule_confidence_dict = {}
         for rule in association_rules_list:
-            left, _, both = freq_itemset_dict.get_frequency_tuple(rule)
+            left, _, both = freq_itemset_dict.get_frequency_combo(rule)
             rule_confidence_dict[rule.serialize()] = (both/left, both)
         return rule_confidence_dict
 
     '''
     Compute values of 31 interestingness measures for all association rules generated from data-set
     '''
-    def compute_interestingnesses(self, output_file):
+    def compute_interestingness(self, output_file):
         print ('computing correlation among interestingness measures...')
         #measures = [om.confidence, om.lift]
         
@@ -141,7 +125,7 @@ class RuleMiner(object):
                     om.odd_multiplier, om.counter_example_rate, om.zhang]
         
         print('loading frequent item-sets....')
-        freq_itemsets_dict =  self.load_frequent_itemsets_as_dictionary()
+        freq_itemsets_dict =  self.load_frequent_itemsets_as_dict()
         association_rules = self.load_association_rules()
         
         print ('computing interestingness for all rules ....')
@@ -149,7 +133,7 @@ class RuleMiner(object):
         with open(output_file, 'w') as write_file:
             total = freq_itemsets_dict.ntransactions
             for rule in association_rules:
-                left, right, both = freq_itemsets_dict.get_frequency_tuple(rule)
+                left, right, both = freq_itemsets_dict.get_frequency_combo(rule)
                 interestingness = []
                 for index in range(len(measures)):
                     value = measures[index](left, right, both, total)
@@ -163,7 +147,7 @@ class RuleMiner(object):
     This method returns two dictionaries for LHS and RHS respectively. 
     Each entry of the dictionaries are (the name of item : its index in feature vector)
     ''' 
-    def get_features_(self):
+    def _get_feature_names(self):
         
         left_features = []
         right_features = []
@@ -181,7 +165,7 @@ class RuleMiner(object):
     '''
     Extract feature for an item-set.
     '''
-    def extract_features_(self, itemset, feature_names):
+    def _extract_features_4_itemset(self, itemset, feature_names):
         n = len(feature_names)
         f_vector = [0 for _ in range(n)]
         for item in itemset:
@@ -193,13 +177,13 @@ class RuleMiner(object):
     '''
     Extract feature vectors for all rules 
     '''
-    def extract_feature_vectors_(self):
-        left_features, right_features  = self.get_features_()
+    def extract_features_4_all_rules(self):
+        left_features, right_features  = self._get_feature_names()
         left_count = len(left_features)
         right_count = len(right_features)
         
         print('Write number of features for LHS and RHS')
-        features_writer = open(self.non_redundant_rule_tmp_file, 'w')
+        features_writer = open(self.files_info.non_redundant_rule_tmp_file, 'w')
         features_writer.write(str(left_count))
         features_writer.write('\n')
         features_writer.write(str(right_count))
@@ -207,13 +191,13 @@ class RuleMiner(object):
         
         print('Starting extraction...')
         for i in range(self.nthreads):
-            input_file = self.rules_tmp_file + '.' + str(i)
+            input_file = self.files_info.get_rule_file(i)
             
             with open(input_file, 'r') as rules_reader:
                 for line in rules_reader:
                     rule = AssociationRule.string_2_rule(line.strip())
-                    a = self.extract_features_(rule.left_items, left_features)
-                    b = self.extract_features_(rule.right_items, right_features)
+                    a = self._extract_features_4_itemset(rule.left_items, left_features)
+                    b = self._extract_features_4_itemset(rule.right_items, right_features)
                     f_vector = np.concatenate((a, b))
                     '''
                     Write a feature vector to file
@@ -226,15 +210,10 @@ class RuleMiner(object):
     Load feature vectors for all non-redundant rules
     '''
     def load_feature_vectors(self):
-        rows = []
-        columns = []
         data = []
-        
-        nRows = 0
-        nColumns = 0
         lengths = []
         
-        with open(self.non_redundant_rule_tmp_file, 'r') as feature_reader:
+        with open(self.files_info.non_redundant_rule_tmp_file, 'r') as feature_reader:
             print('Loading number of LHS and RHS features...')
             lhs_count = int(feature_reader.readline())
             rhs_count = int(feature_reader.readline())
@@ -243,24 +222,17 @@ class RuleMiner(object):
                 rule_text, f_vector = json.loads(line.strip())
                 rule = AssociationRule.string_2_rule(rule_text.strip())
                 lengths.append(rule.length())
-                rule = None
+                data.append(f_vector)
                 
-                nColumns = len(f_vector)
-                for i in range(nColumns):
-                    if f_vector[i] != 0:
-                        rows.append(nRows)
-                        columns.append(i)
-                        data.append(f_vector[i])
-                nRows += 1
                 
-        return sparse.csr_matrix((data, (rows, columns)), shape=(nRows, nColumns)), lengths, lhs_count, rhs_count
+        return np.array(data), lengths, lhs_count, rhs_count
         
     '''
     Load non-redundant rules from a file.
     '''
     def load_association_rules(self):
         association_rules_list = []
-        with open(self.non_redundant_rule_tmp_file, 'r') as rules_reader:
+        with open(self.files_info.non_redundant_rule_tmp_file, 'r') as rules_reader:
             rules_reader.readline()
             rules_reader.readline()
             
@@ -272,9 +244,9 @@ class RuleMiner(object):
     '''
     Load non-redundant rules and their feature vectors from a file
     '''
-    def load_rules_and_their_features(self):
+    def load_rules_and_features(self):
         rules_and_their_features = {}
-        with open(self.non_redundant_rule_tmp_file, 'r') as feature_reader:
+        with open(self.files_info.non_redundant_rule_tmp_file, 'r') as feature_reader:
             lhs_count = int(feature_reader.readline())
             rhs_count = int(feature_reader.readline())
             

@@ -4,13 +4,17 @@ Created on Apr 28, 2017
 @author: BanhDzui
 '''
 from rules_mining.Helper import string_2_itemset
+from rules_mining.Helper import merge_itemsets, itemset_2_string
+
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 class ItemsetDictionary(object):
     
 
-    def __init__(self, nTransaction = 0):
+    def __init__(self, ntransactions = 0):
         self.itemsets = {}
-        self.ntransactions = nTransaction
+        self.ntransactions = ntransactions
             
     def size(self):
         return len(self.itemsets)
@@ -40,29 +44,29 @@ class ItemsetDictionary(object):
             return self.itemsets[itemset_key]
         return 0
         
-    def get_confidence(self, rule):
-        left = self.get_frequency(rule.left_string())
-        both = self.get_frequency(rule.itemset_string())
+    def getConfidence(self, rule):
+        left = self.get_frequency(rule.lhs_string())
+        both = self.get_frequency(rule.rule_itemset_2_string())
         if left == 0: return 0
         return both/left
     
-    def get_frequency_tuple(self, rule):
-        left = self.get_frequency(rule.left_string())
-        right =self.get_frequency(rule.right_string())
-        both = self.get_frequency(rule.itemset_string())
+    def get_frequency_combo(self, rule):
+        left = self.get_frequency(rule.lhs_string())
+        right =self.get_frequency(rule.rhs_string())
+        both = self.get_frequency(rule.rule_itemset_2_string())
         
         return left, right, both
     
     def get_support(self, itemset_key):     
         return self.get_frequency(itemset_key)/self.ntransactions
        
-    def split(self, nChunk):
+    def split(self, nchunks):
         itemsets_names = self.itemsets.keys()
-        nItemsets = len(itemsets_names)
+        nitemsets = len(itemsets_names)
         
-        print ('Number of frequent item-sets: ' + str(nItemsets))
-        itemset_chunks = [[] for _ in range(nChunk)]
-        size_of_chunk = (int)(nItemsets/nChunk) + 1
+        print ('Number of frequent item-sets: ' + str(nitemsets))
+        itemset_chunks = [[] for _ in range(nchunks)]
+        size_of_chunk = (int)(nitemsets/nchunks) + 1
                     
         index = 0
         counter = 0
@@ -99,3 +103,80 @@ class ItemsetDictionary(object):
                 frequency = int(subStrings[1].strip())
                 
                 self.itemsets[itemset_key] = frequency
+                
+    def _complement_condition(self, r1, r2):
+        merged_itemset = merge_itemsets(r1.left_items, 
+                                        r2.left_items)
+        
+        s = self.get_frequency(itemset_2_string(merged_itemset))
+        sl = self.get_frequency(r1.lhs_string())
+        sr = self.get_frequency(r2.lhs_string())
+    
+        #if s > 0: return True
+        return max(s/sl, s/sr)
+     
+        
+    '''
+    Check if two rules are contrary each other based on the matching function
+    r1, r2: dictionaries includes {'r': rule, 'f': feature vector}
+    contrast_params: contains thresholds, and size of LHS, RHS features 
+    '''
+    def is_contrast(self, r1, r2, contrast_params):
+        
+        n = contrast_params.n_lhs_features
+        a = cosine_similarity(np.reshape(r1['f'][n:], (1, -1)),
+                              np.reshape(r2['f'][n:], (1, -1)))[0,0]
+        if a > contrast_params.delta2: return (False, 0, 0)
+        
+        b = cosine_similarity(np.reshape(r1['f'][:n], (1, -1)), 
+                              np.reshape(r2['f'][:n], (1, -1)))[0,0]
+        if b <= contrast_params.delta1: return (False, 0, 0)
+        
+        t = self._complement_condition(r1['r'], r2['r'])
+        if t > contrast_params.share_threshold:
+            return (True, b, t)
+        return (False, 0, 0)
+    
+    
+    def is_inner_contrast(self, group, contrast_params):
+        #print('check inner')
+        both_condition = self.find_pottential_contrast_locs(group, group, contrast_params)
+        if both_condition is None: return False 
+        
+        for i in range(len(both_condition[0])):
+            x = both_condition[0][i]
+            y = both_condition[1][i]
+            if x >= y: continue
+            t = self._complement_condition(group['r'][x], group['r'][y])
+            if t > contrast_params.share_threshold: return True 
+            
+        return False
+
+        
+        
+    def find_pottential_contrast_locs(self, group1, group2, contrast_params):
+        rhs_sim = cosine_similarity(group1['rhs'], group2['rhs']) 
+        rhs_condition = (rhs_sim > contrast_params.delta2).astype(int) 
+        if np.all(rhs_condition > 0) == True: return None 
+    
+        
+        lhs_sim = cosine_similarity(group1['lhs'], group2['lhs'])
+        lhs_condition = (lhs_sim <= contrast_params.delta1).astype(int)
+        if np.all(lhs_condition > 0) == True: return None 
+        
+        locs = np.where(lhs_condition + rhs_condition <= 0)
+        return locs 
+        
+    def is_outer_contrast(self, group1, group2, contrast_params):
+        #print('check outer')
+        both_condition = self.find_pottential_contrast_locs(group1, group2, contrast_params)
+        if both_condition is None: return False 
+        
+        for i in range(len(both_condition[0])):
+            x = both_condition[0][i]
+            y = both_condition[1][i]
+            t = self._complement_condition(group1['r'][x], group2['r'][y])
+            if t > contrast_params.share_threshold: return True 
+            
+        return False
+    

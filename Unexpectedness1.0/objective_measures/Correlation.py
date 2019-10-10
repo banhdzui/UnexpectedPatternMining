@@ -5,7 +5,7 @@ from sklearn.metrics.classification import matthews_corrcoef
 def compute_pearman(rank_matrix):
     return stats.spearmanr(rank_matrix)
 
-def tryPearsonCorrelation(rank_matrix):
+def try_pearson_correlation(rank_matrix):
     _, m = rank_matrix.shape
     correlations = np.zeros((m, m))
     p_values = np.zeros((m, m))

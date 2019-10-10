@@ -17,7 +17,7 @@ class RuleFormatter(object):
     @staticmethod
     def mydefault(rule):
         #return True
-        return len(rule.right_items) == 1
+        return len(rule.right_items) == 1#<= 2
     
     
     @staticmethod
@@ -30,13 +30,13 @@ class RuleFormatter(object):
     
     @staticmethod
     def mass(rule):
-        return rule.left_string().isdigit() and (not rule.right_string().isdigit())
+        return rule.lhs_string().isdigit() and (not rule.rhs_string().isdigit())
     
     @staticmethod
     def rna(rule):
         condition = (len(rule.right_items) == 1)
-        condition &= ('rna_' in rule.right_string())
-        condition &=  ('rna_' not in rule.left_string())
+        condition &= ('rna_' in rule.rhs_string())
+        condition &=  ('rna_' not in rule.lhs_string())
         return condition
     
     @staticmethod
@@ -49,8 +49,8 @@ class RuleFormatter(object):
     
     @staticmethod
     def tcr(rule):
-        left_key = rule.left_string()
-        right_key = rule.right_string()
+        left_key = rule.lhs_string()
+        right_key = rule.rhs_string()
         return ('CD4' not in left_key) and ('CD8' not in left_key) and (right_key == 'CD4' or right_key == 'CD8')
     
     @staticmethod
@@ -63,8 +63,8 @@ class RuleFormatter(object):
         
     @staticmethod
     def ank3(rule):
-        left_key = rule.left_string()
-        right_key = rule.right_string()
+        left_key = rule.lhs_string()
+        right_key = rule.rhs_string()
         return ('CASE' not in left_key) and ('HEALTHY' not in left_key) and (right_key == 'CASE' or right_key == 'HEALTHY')
     
     @staticmethod
@@ -82,7 +82,7 @@ class RuleFormatter(object):
             if 'class@' not in item:
                 flag = False
                 break
-        left_key = rule.left_string()
+        left_key = rule.lhs_string()
         return ('class@' not in left_key) and flag == True
     
     @staticmethod
@@ -95,8 +95,8 @@ class RuleFormatter(object):
         
     @staticmethod
     def kdd(rule):
-        left_key = rule.left_string()
-        right_key = rule.right_string()
+        left_key = rule.lhs_string()
+        right_key = rule.rhs_string()
         return ('c_' not in left_key) and (len(rule.right_items) == 1 and 'c_' in right_key)
     
     @staticmethod
@@ -170,7 +170,7 @@ class RuleFormatter(object):
         
     @staticmethod
     def splice(rule):
-        left_key = rule.left_string()
-        right_key = rule.right_string()
+        left_key = rule.lhs_string()
+        right_key = rule.rhs_string()
         return ('EI' not in left_key) and ('IE' not in left_key) and ('N@' not in left_key) and (right_key == 'EI' or right_key == 'IE' or right_key == 'N@')
         

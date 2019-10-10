@@ -23,11 +23,10 @@ def refine_with_unexpectedness(data_set, classes_dict, preY, Ytrue, unexpected_r
     for i in range(data_set.size()):
         x = data_set.get_transaction(i)
         for r in unexpected_rules:
-            if r.is_satisfied(x, is_lhs = True):
+            if r.satisfy_rule(x, is_lhs = True):
                 label = r.right_items[0]
                 y_pred[i] = classes_dict[label]
     print(f1_score(Ytrue, y_pred, average=None))
-    
     if (data_set.number_of_classes() <= 2):
         fpr, tpr, _ = roc_curve(Ytrue, y_pred.flatten())
         print(auc(fpr, tpr))

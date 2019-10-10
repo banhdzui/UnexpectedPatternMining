@@ -38,7 +38,7 @@ class RulesCollection(object):
     def remove_redundancy(self, freq_itemset_dict):
         new_rules = []
         for r in self.rules:
-            if r.is_redundant_rule(freq_itemset_dict):
+            if r.is_redundant(freq_itemset_dict):
                 continue
             new_rules.append(r)
         self.rules = new_rules 
@@ -57,7 +57,7 @@ class RulesDictionary():
     def get_rules(self):
         return list(self.rules.values())
     
-    def get_rule_string(self):
+    def rule_2_string(self):
         return list(self.rules.keys())
     
     def clear(self):

@@ -99,6 +99,12 @@ class DataSet:
                 if item_name not in attr_dict:
                     attr_dict[item_name] = True
         return attr_dict
+    
+    def get_class_list_(self):
+        # Sort items and classes in alphabet order.
+        return sorted(set(self.data_labels))
+        
+        
 
     '''
     Convert transaction data into binary format
@@ -130,7 +136,9 @@ class DataSet:
                 file_writer.write(item_names[i] + ',')
                 file_writer.write(','.join(str(x) for x in matrix.relation_matrix[i].tolist()))
                 file_writer.write('\n')
-        
+                
+                
+   
     '''
     This method estimates relationship among items. There're two kinds of relationship
     - Correlation:including negative correlation (<= -0.3) and positive correlation (>= 0.3)
@@ -141,16 +149,15 @@ class DataSet:
         print ('Computing item relation matrix...')
         
         X_train, _ = self.convert_2_binary_format()
+    
         correlation_matrix, p_values = stats.spearmanr(X_train.relation_matrix.todense(), axis = 0)
+        
         zeros_mask = (p_values <= 0.05).astype(int)
-        negative_correlation = (correlation_matrix < -0.1).astype(int)
-        negative_correlation = (correlation_matrix * negative_correlation * zeros_mask)
+        small_mask = (np.abs(correlation_matrix) >= 0.1).astype(int)
         
-        positive_correlation = (correlation_matrix > 0.1).astype(int)
-        positive_correlation = (correlation_matrix * positive_correlation * zeros_mask)
-        
-        relation_matrix = negative_correlation + positive_correlation
+        relation_matrix = correlation_matrix * small_mask * zeros_mask
         
         a = RelationArray2D(X_train.item_dict, relation_matrix)
         DataSet.write_relation_matrix_(a)
+        
         return a

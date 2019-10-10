@@ -12,15 +12,15 @@ class AssociationRule:
     def score(self, index):
         return self.scores[index]
     
-    def left_string(self):
+    def lhs_string(self):
         return itemset_2_string(self.left_items)
         
-    def right_string(self):
+    def rhs_string(self):
         return itemset_2_string(self.right_items)
     
     def serialize(self):
-        left_key = self.left_string()
-        right_key = self.right_string()
+        left_key = self.lhs_string()
+        right_key = self.rhs_string()
         return left_key + ">" + right_key
     
     @staticmethod        
@@ -41,16 +41,16 @@ class AssociationRule:
         return itemset
         
         
-    def itemset_string(self):
+    def rule_itemset_2_string(self):
         itemset = self.get_itemset()
         return itemset_2_string(itemset)
     
-    def compute_probabilities(self,frequent_itemsets, nTransactions):  
+    def compute_basic_probs(self,frequent_itemsets, nTransactions):  
         
-        left = frequent_itemsets[self.left_string()]
-        right = frequent_itemsets[self.right_string()]
+        left = frequent_itemsets[self.lhs_string()]
+        right = frequent_itemsets[self.rhs_string()]
         
-        both = frequent_itemsets[self.itemset_string()]
+        both = frequent_itemsets[self.rule_itemset_2_string()]
         
         vector = {}
         
@@ -136,7 +136,7 @@ class AssociationRule:
         
         return vector
     
-    def is_redundant(self, bits, k, itemset, freq_itemset_dict): 
+    def is_redundant_(self, bits, k, itemset, freq_itemset_dict): 
         '''
         Run out of items --> create rule and check format criterion
         '''
@@ -150,14 +150,14 @@ class AssociationRule:
                     items_2.append(itemset[index])
             for item in items_2:
                 rule = AssociationRule(items_1, [item])
-                confidence = freq_itemset_dict.get_confidence(rule)
+                confidence = freq_itemset_dict.getConfidence(rule)
                 if confidence == 1: return True
             return False 
       
         value_domain = [True, False]
         for value in value_domain:
             bits[k] = value
-            checker = self.is_redundant(bits, k+1, itemset, freq_itemset_dict)
+            checker = self.is_redundant_(bits, k+1, itemset, freq_itemset_dict)
             if checker == True: return True
             bits[k] = True    
         return False
@@ -165,18 +165,18 @@ class AssociationRule:
     '''
     Expand an item-set with equivalent items.
     '''
-    def is_redundant_rule(self, freq_itemset_dict):
+    def is_redundant(self, freq_itemset_dict):
         bits = [True for _ in self.left_items]
-        checker = self.is_redundant(bits, 0, self.left_items, freq_itemset_dict)
+        checker = self.is_redundant_(bits, 0, self.left_items, freq_itemset_dict)
         if checker == True: return True
         
         bits =  [True for _ in self.right_items]
-        return self.is_redundant(bits, 0, self.right_items, freq_itemset_dict)
+        return self.is_redundant_(bits, 0, self.right_items, freq_itemset_dict)
     
     '''
     Check if an item-set is satisfied condition of the rule. 
     '''
-    def is_satisfied(self, itemset, is_lhs = True):
+    def satisfy_rule(self, itemset, is_lhs = True):
         condition = self.left_items
         if is_lhs == False: condition = self.right_items
         if len(condition) > len(itemset) or len(itemset) == 0:

@@ -13,7 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-from sklearn.decomposition.kernel_pca import KernelPCA
+#from sklearn.decomposition.kernel_pca import KernelPCA
+from sklearn.decomposition.incremental_pca import IncrementalPCA
 
 def load_feature_vectors(input_file):
     features = []
@@ -69,9 +70,11 @@ if __name__ == '__main__':
         sys.exit(2)
         
     X, association_rules = load_feature_vectors(config.get_value('feature'))
-    _, m = X.shape
     
-    pca = KernelPCA(kernel='poly', degree = 3, coef0 = 0.1, random_state=1)#IncrementalPCA()
+    m = 2
+    print('dimensional reduce: ' + str(m))
+    
+    pca = IncrementalPCA(n_components = X.shape[1]//m)
     new_X = pca.fit_transform(X)
     clusters, number_of_clusters = load_clusters(config.get_value('cluster'))
     print (number_of_clusters)
@@ -94,4 +97,5 @@ if __name__ == '__main__':
     ax.text2D(0.5, 0.95, config.get_value('title'), transform=ax.transAxes)
     ax.scatter(new_X[:,0], new_X[:,1], new_X[:,2], c = Y, alpha = 0.9, s = 5)
     plt.savefig(config.get_value('output'), format='PNG',bbox_inches='tight')
+    #plt.show()
     

@@ -22,7 +22,7 @@ Run the script 'DetectUnexpectedRules.py' for clustering and detecting unexpecte
 
 Ex: Breast Cancer dataset
 ```
-python DetectUnexpectedRules.py  --output out/breast_clusters.txt --minpts 3 --eps 1.0 --delta1 0.0 --delta2 -0.9
+python DetectUnexpectedRules.py  --output out/breast_clusters.txt --minpts 3 --eps 2.0 --delta1 0.0 --delta2 -0.9 --epsilon 0
 ```
 #### Step 3(optional) Evaluate the rules.
 This step is to examine the contribution of the unexpected rules to the performance of two classifiers: Random Forest and SVM.
@@ -31,14 +31,14 @@ Run the script 'TestAnomalyDetector.py' with the following arguments: train (tra
 
 Ex: Breast Cancer dataset
 ```
-python TestAnomalyDetector.py --train in/breast_train_transactions.txt --test in/breast_test_transactions.txt --rules out/breast_clusters.txt.unexpected --class 0
+python TestAnomalyDetector.py --train in/breast_train_transactions.txt --test in/breast_test_transactions.txt --rules out/breast_clusters.txt.2.0_0.0.unexpected --class 0
 ```
 ### Visualization of the clustering result
 Run the script 'DrawAssociationRules.py' with the arguments: feature (file saving rules and their features), cluster (clustering result file), output and title.
 
 Ex: Breast Cancer dataset
 ```
-pythonw DrawAssociationRules.py --feature tmp/miner.tmp.non_redundant_rules --cluster out/breast_clusters.txt --output out/breast_cancer.png --title Breast_Cancer
+pythonw DrawAssociationRules.py --feature tmp/miner.tmp.non_redundant_rules --cluster out/breast_clusters.txt.2.0 --output out/breast_cancer.png --title Breast_Cancer
 ```
 
 
